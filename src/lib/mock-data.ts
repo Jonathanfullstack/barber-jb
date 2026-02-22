@@ -1,5 +1,5 @@
 // JB Barber — imagens relacionadas (Unsplash: barbearia, corte, barba, etc.). Fallback se não carregar.
-const W = (id: string, width: number, q = 80) =>
+const W = (id: string, width = 400, q = 80) =>
   `https://images.unsplash.com/photo-${id}?w=${width}&q=${q}`;
 
 // Fallback quando a imagem do Unsplash não carregar (picsum sempre responde)
@@ -83,16 +83,24 @@ export const AGENDAMENTOS = [
   { id: "a7", status: "finalizado" as const, servicoNome: "Corte de Cabelo", barbeiroNome: "Miguel Santos", barbeiroId: "b2", clienteNome: "Rafael Costa", clienteTelefone: "(11) 93456-7890", data: "2025-02-12", horario: "11:00", preco: 50, dataLabel: "12 de Fevereiro", dataLabelLong: "12 de Fevereiro" },
 ];
 
+/** Tipo mínimo para cálculo de faturamento (compatível com AGENDAMENTOS e AgendamentoItem[]) */
+type AgendamentoParaFaturamento = Array<{
+  barbeiroId: string;
+  status: string;
+  data: string;
+  preco: number;
+}>;
+
 /** Faturamento de um barbeiro em um mês/ano (soma dos agendamentos finalizados) */
 export function faturamentoNoMes(
   barbeiroId: string,
   ano: number,
   mes: number,
-  lista?: typeof AGENDAMENTOS
+  lista?: AgendamentoParaFaturamento
 ): number {
   const pad = (n: number) => String(n).padStart(2, "0");
   const prefix = `${ano}-${pad(mes)}`;
-  const ags = lista ?? AGENDAMENTOS;
+  const ags = (lista ?? AGENDAMENTOS) as AgendamentoParaFaturamento;
   return ags
     .filter((a) => a.barbeiroId === barbeiroId && a.status === "finalizado" && a.data.startsWith(prefix))
     .reduce((s, a) => s + a.preco, 0);
