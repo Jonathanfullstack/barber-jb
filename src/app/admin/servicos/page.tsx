@@ -352,7 +352,7 @@ export default function AdminServicosPage() {
       )}
 
       {/* Modal Confirmar Excluir */}
-      {modal && "tipo" in modal && modal.tipo === "excluir" && (
+      {isExcluir && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
           onClick={closeModal}
