@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String?
+  image        String?
+  agendamentos Agendamento[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Barbearia {
+  id          String    @id @default(cuid())
+  name        String
+  address     String
+  imageUrl    String?
+  about       String?   @db.Text
+  phone1      String?
+  phone2      String?
+  rating      Float     @default(5)
+  totalAvaliacoes Int   @default(0)
+  barbeiros   Barbeiro[]
+  servicos    Servico[]
+  agendamentos Agendamento[]
+  horarios    HorarioFuncionamento[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Barbeiro {
+  id           String        @id @default(cuid())
+  barbeariaId  String
+  name         String
+  avatar       String?
+  agendamentos Agendamento[]
+  barbearia    Barbearia     @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model HorarioFuncionamento {
+  id          String    @id @default(cuid())
+  barbeariaId String
+  diaSemana   Int
+  abre        String?
+  fecha       String?
+  barbearia   Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+}
+
+model Servico {
+  id          String        @id @default(cuid())
+  barbeariaId String
+  nome        String
+  descricao   String?       @db.Text
+  preco       Decimal       @db.Decimal(10, 2)
+  duracao     Int
+  imageUrl    String?
+  agendamentos Agendamento[]
+  barbearia   Barbearia     @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Agendamento {
+  id          String    @id @default(cuid())
+  clienteId   String
+  barbeariaId String
+  barbeiroId  String
+  servicoId   String
+  dataHora    DateTime
+  status      String    @default("confirmado")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  cliente   User      @relation(fields: [clienteId], references: [id])
+  barbearia Barbearia @relation(fields: [barbeariaId], references: [id])
+  barbeiro  Barbeiro  @relation(fields: [barbeiroId], references: [id])
+  servico   Servico   @relation(fields: [servicoId], references: [id])
+}
