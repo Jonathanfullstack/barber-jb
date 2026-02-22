@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePainelAuth } from "@/context/PainelAuthContext";
 
-export default function PainelLoginPage() {
+function PainelLoginContent() {
   const { barbeiro, login, isLoading } = usePainelAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -97,5 +97,17 @@ export default function PainelLoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function PainelLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-md mx-auto px-4 py-16 flex justify-center">
+        <p className="text-gray-400">Carregando...</p>
+      </div>
+    }>
+      <PainelLoginContent />
+    </Suspense>
   );
 }

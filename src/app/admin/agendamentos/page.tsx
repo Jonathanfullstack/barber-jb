@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { getAgendamentos, atualizarAgendamento } from "@/lib/agendamentos-store";
 import { getBarbeiros } from "@/lib/barbeiros-store";
 
-export default function AdminAgendamentosPage() {
+function AdminAgendamentosContent() {
   const searchParams = useSearchParams();
   const statusFromUrl = searchParams.get("status") || "";
   const [filtroStatus, setFiltroStatus] = useState<string>(statusFromUrl);
@@ -99,5 +99,13 @@ export default function AdminAgendamentosPage() {
         <p className="text-gray-400 text-center py-8 md:py-12 text-sm md:text-base">Nenhum agendamento encontrado.</p>
       )}
     </div>
+  );
+}
+
+export default function AdminAgendamentosPage() {
+  return (
+    <Suspense fallback={<div className="text-gray-400 py-8">Carregando...</div>}>
+      <AdminAgendamentosContent />
+    </Suspense>
   );
 }
