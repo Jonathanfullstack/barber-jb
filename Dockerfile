@@ -3,6 +3,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# OpenSSL para Prisma no Alpine (evita "failed to detect libssl" e geração do client)
+RUN apk add --no-cache openssl
+
 # Dependências
 COPY package.json package-lock.json* ./
 RUN npm ci
