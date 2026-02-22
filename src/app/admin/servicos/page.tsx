@@ -287,12 +287,14 @@ export default function AdminServicosPage() {
                   <label className="block text-gray-400 text-sm mb-1">Imagem do serviço</label>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-3">
-                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-dark-700 border border-gray-600 shrink-0">
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-dark-700 border border-gray-600 shrink-0">
                         {form.imageUrl ? (
-                          <img
+                          <Image
                             src={form.imageUrl}
                             alt="Preview"
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            unoptimized={form.imageUrl.startsWith("data:")}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs text-center">
@@ -350,7 +352,7 @@ export default function AdminServicosPage() {
       )}
 
       {/* Modal Confirmar Excluir */}
-      {isExcluir && modal && modal !== "novo" && modal.tipo === "excluir" && (
+      {modal && "tipo" in modal && modal.tipo === "excluir" && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
           onClick={closeModal}

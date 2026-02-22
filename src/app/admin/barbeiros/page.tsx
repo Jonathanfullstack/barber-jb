@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Image from "next/image";
 import BarbeiroAvatar from "@/components/BarbeiroAvatar";
 import { getBarbeiros, addBarbeiro, atualizarBarbeiro, type BarbeiroItem } from "@/lib/barbeiros-store";
 import { fileToDataUrl } from "@/lib/image-upload";
@@ -211,12 +212,14 @@ export default function AdminBarbeirosPage() {
                   <label className="block text-gray-400 text-sm mb-1">Foto do barbeiro</label>
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-14 h-14 rounded-full overflow-hidden bg-dark-700 border border-gray-600 shrink-0">
+                      <div className="relative w-14 h-14 rounded-full overflow-hidden bg-dark-700 border border-gray-600 shrink-0">
                         {form.avatar ? (
-                          <img
+                          <Image
                             src={form.avatar}
                             alt="Preview"
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            unoptimized={form.avatar.startsWith("data:")}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">

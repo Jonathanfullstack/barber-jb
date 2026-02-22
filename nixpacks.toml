@@ -1,0 +1,13 @@
+# Railway/Nixpacks: mais memória no build do Next.js (evita OOM)
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[variables]
+NODE_ENV = "production"
+NODE_OPTIONS = "--max-old-space-size=4096"

@@ -40,6 +40,8 @@ model Barbeiro {
   barbeariaId  String
   name         String
   avatar       String?
+  login        String?       @unique
+  senha        String?
   agendamentos Agendamento[]
   barbearia    Barbearia     @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
   createdAt    DateTime      @default(now())
