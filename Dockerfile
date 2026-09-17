@@ -16,8 +16,8 @@ RUN npx prisma generate
 RUN npm run build
 
 EXPOSE 3000
-ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Railway injeta DATABASE_URL; aplica as migrations e sobe o app
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+# Railway injeta PORT e DATABASE_URL. migrate deploy em banco novo;
+# db push cobre o Postgres já existente deste projeto (schema sem histórico de migration).
+CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma db push; npx next start --hostname 0.0.0.0 --port ${PORT:-3000}"]
