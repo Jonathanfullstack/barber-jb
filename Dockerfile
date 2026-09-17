@@ -19,5 +19,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Railway injeta DATABASE_URL; sincroniza o schema no Postgres e sobe o app
-CMD ["sh", "-c", "npx prisma db push && npm run start"]
+# Railway injeta DATABASE_URL; aplica as migrations e sobe o app
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]

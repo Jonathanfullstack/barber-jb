@@ -7,45 +7,88 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum PapelMembro {
+  PROPRIETARIO
+  ADMIN
+  BARBEIRO
+}
+
+enum StatusAgendamento {
+  PENDENTE
+  CONFIRMADO
+  FINALIZADO
+  CANCELADO
+}
+
+enum StatusAssinatura {
+  TRIAL
+  ATIVA
+  ATRASADA
+  CANCELADA
+}
+
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  name         String?
-  image        String?
-  agendamentos Agendamento[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  name           String
+  email          String        @unique
+  passwordHash   String
+  phone          String?
+  memberships    Membro[]
+  perfilBarbeiro Barbeiro?
+  agendamentos   Agendamento[] @relation("ClienteAgendamentos")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
 model Barbearia {
-  id          String    @id @default(cuid())
-  name        String
-  address     String
-  imageUrl    String?
-  about       String?   @db.Text
-  phone1      String?
-  phone2      String?
-  rating      Float     @default(5)
-  totalAvaliacoes Int   @default(0)
-  barbeiros   Barbeiro[]
-  servicos    Servico[]
-  agendamentos Agendamento[]
-  horarios    HorarioFuncionamento[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id               String                  @id @default(cuid())
+  name             String
+  slug             String                  @unique
+  address          String?
+  imageUrl         String?
+  about            String?                 @db.Text
+  phone            String?
+  timezone         String                  @default("America/Sao_Paulo")
+  statusAssinatura StatusAssinatura        @default(TRIAL)
+  trialEndsAt      DateTime?
+  stripeCustomerId String?                 @unique
+  stripeSubscriptionId String?             @unique
+  membros          Membro[]
+  barbeiros        Barbeiro[]
+  servicos         Servico[]
+  agendamentos     Agendamento[]
+  horarios         HorarioFuncionamento[]
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+}
+
+model Membro {
+  id          String      @id @default(cuid())
+  userId      String
+  barbeariaId String
+  papel       PapelMembro @default(BARBEIRO)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barbearia   Barbearia   @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+
+  @@unique([userId, barbeariaId])
+  @@index([barbeariaId])
 }
 
 model Barbeiro {
   id           String        @id @default(cuid())
   barbeariaId  String
+  userId       String?       @unique
   name         String
   avatar       String?
-  login        String?       @unique
-  senha        String?
+  ativo        Boolean       @default(true)
   agendamentos Agendamento[]
   barbearia    Barbearia     @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  @@index([barbeariaId])
 }
 
 model HorarioFuncionamento {
@@ -54,36 +97,51 @@ model HorarioFuncionamento {
   diaSemana   Int
   abre        String?
   fecha       String?
+  fechado     Boolean   @default(false)
   barbearia   Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+
+  @@unique([barbeariaId, diaSemana])
 }
 
 model Servico {
-  id          String        @id @default(cuid())
-  barbeariaId String
-  nome        String
-  descricao   String?       @db.Text
-  preco       Decimal       @db.Decimal(10, 2)
-  duracao     Int
-  imageUrl    String?
+  id           String        @id @default(cuid())
+  barbeariaId  String
+  nome         String
+  descricao    String?       @db.Text
+  preco        Decimal       @db.Decimal(10, 2)
+  duracao      Int
+  imageUrl     String?
+  ativo        Boolean       @default(true)
   agendamentos Agendamento[]
-  barbearia   Barbearia     @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  barbearia    Barbearia     @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([barbeariaId])
 }
 
 model Agendamento {
-  id          String    @id @default(cuid())
-  clienteId   String
-  barbeariaId String
-  barbeiroId  String
-  servicoId   String
-  dataHora    DateTime
-  status      String    @default("confirmado")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String            @id @default(cuid())
+  clienteId       String?
+  clienteNome     String
+  clienteEmail    String?
+  clienteTelefone String
+  barbeariaId     String
+  barbeiroId      String
+  servicoId       String
+  inicio          DateTime
+  fim             DateTime
+  status          StatusAgendamento @default(CONFIRMADO)
+  observacoes     String?           @db.Text
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
-  cliente   User      @relation(fields: [clienteId], references: [id])
-  barbearia Barbearia @relation(fields: [barbeariaId], references: [id])
-  barbeiro  Barbeiro  @relation(fields: [barbeiroId], references: [id])
-  servico   Servico   @relation(fields: [servicoId], references: [id])
+  cliente   User?     @relation("ClienteAgendamentos", fields: [clienteId], references: [id], onDelete: SetNull)
+  barbearia Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  barbeiro  Barbeiro  @relation(fields: [barbeiroId], references: [id], onDelete: Restrict)
+  servico   Servico   @relation(fields: [servicoId], references: [id], onDelete: Restrict)
+
+  @@index([barbeariaId, inicio])
+  @@index([barbeiroId, inicio, fim])
+  @@index([clienteId])
 }

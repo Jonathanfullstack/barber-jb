@@ -1,111 +1,115 @@
-"use client";
+import Link from "next/link";
+import { revalidatePath } from "next/cache";
+import { CalendarDays, ExternalLink, MoreHorizontal } from "lucide-react";
+import { requireWorkspace } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import PageHeader from "@/components/admin/PageHeader";
+import StatusBadge from "@/components/admin/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-import { Suspense, useState, useEffect } from "react";
-import Image from "next/image";
-import { useSearchParams } from "next/navigation";
-import { getAgendamentos, atualizarAgendamento } from "@/lib/agendamentos-store";
-import { getBarbeiros } from "@/lib/barbeiros-store";
+async function atualizarStatus(formData: FormData) {
+  "use server";
+  const { barbearia } = await requireWorkspace();
+  const id = String(formData.get("id"));
+  const status = String(formData.get("status"));
+  if (!["CONFIRMADO", "FINALIZADO", "CANCELADO"].includes(status)) return;
+  await prisma.agendamento.updateMany({ where: { id, barbeariaId: barbearia.id }, data: { status: status as "CONFIRMADO" | "FINALIZADO" | "CANCELADO" } });
+  revalidatePath("/admin/agendamentos");
+}
 
-function AdminAgendamentosContent() {
-  const searchParams = useSearchParams();
-  const statusFromUrl = searchParams.get("status") || "";
-  const [filtroStatus, setFiltroStatus] = useState<string>(statusFromUrl);
-  const [agendamentos, setAgendamentos] = useState(getAgendamentos());
+const views = [
+  { value: "hoje", label: "Hoje" },
+  { value: "proximos", label: "Próximos" },
+  { value: "todos", label: "Todos" },
+];
 
-  useEffect(() => {
-    setFiltroStatus(statusFromUrl);
-  }, [statusFromUrl]);
-
-  useEffect(() => {
-    setAgendamentos(getAgendamentos());
-  }, []);
-
-  const lista = agendamentos.filter((a) => !filtroStatus || a.status === filtroStatus);
-
-  const handleFinalizar = (id: string) => {
-    atualizarAgendamento(id, { status: "finalizado" });
-    setAgendamentos(getAgendamentos());
-  };
-
-  const handleCancelar = (id: string) => {
-    atualizarAgendamento(id, { status: "cancelado" });
-    setAgendamentos(getAgendamentos());
-  };
-
-  const barbeiros = getBarbeiros();
-  const barbeiroAvatar = (barbeiroId: string) => barbeiros.find((b) => b.id === barbeiroId)?.avatar;
+export default async function AgendamentosPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const { barbearia } = await requireWorkspace();
+  const { view: rawView } = await searchParams;
+  const view = views.some((item) => item.value === rawView) ? rawView! : "hoje";
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  const dateFilter = view === "hoje" ? { gte: start, lt: end } : view === "proximos" ? { gte: now } : undefined;
+  const itens = await prisma.agendamento.findMany({
+    where: { barbeariaId: barbearia.id, ...(dateFilter ? { inicio: dateFilter } : {}) },
+    include: { barbeiro: true, servico: true },
+    orderBy: { inicio: view === "todos" ? "desc" : "asc" },
+    take: 100,
+  });
+  const dayFormat = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: barbearia.timezone });
+  const shortDate = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: barbearia.timezone });
+  const timeFormat = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: barbearia.timezone });
+  const groups = Map.groupBy(itens, (item) => dayFormat.format(item.inicio));
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
-        <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white truncate">Agendamentos</h1>
-        <select
-          value={filtroStatus}
-          onChange={(e) => setFiltroStatus(e.target.value)}
-          className="bg-dark-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-xs md:text-sm w-full sm:w-auto min-h-[44px]"
-        >
-          <option value="">Todos os status</option>
-          <option value="confirmado">Confirmados</option>
-          <option value="finalizado">Finalizados</option>
-          <option value="cancelado">Cancelados</option>
-        </select>
+      <PageHeader
+        eyebrow="Operação"
+        title="Agenda"
+        description="Acompanhe as reservas por horário e atualize o andamento de cada atendimento."
+        action={<Button asChild><Link href={`/b/${barbearia.slug}`} target="_blank"><ExternalLink />Nova reserva</Link></Button>}
+      />
+
+      <div className="mb-5 flex gap-1 overflow-x-auto border-b border-border" role="tablist" aria-label="Período da agenda">
+        {views.map((item) => <Link key={item.value} href={`/admin/agendamentos?view=${item.value}`} role="tab" aria-selected={view === item.value} className={cn("relative min-h-11 whitespace-nowrap px-4 py-3 text-sm font-medium text-muted-foreground", view === item.value && "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-primary")}>{item.label}</Link>)}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
-        {lista.map((a) => (
-          <article
-            key={a.id}
-            className="bg-dark-800 rounded-xl border border-gray-700 p-3 md:p-4 flex gap-3 md:gap-4 min-w-0"
-          >
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden relative shrink-0">
-              <Image
-                src={barbeiroAvatar(a.barbeiroId) || `https://picsum.photos/seed/barber${a.barbeiroId}/96`}
-                alt=""
-                fill
-                className="object-cover"
-                unoptimized
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <span
-                className={`inline-block px-1.5 py-0.5 rounded text-[10px] md:text-xs font-medium mb-1 md:mb-2 ${
-                  a.status === "confirmado"
-                    ? "bg-brand-purple text-white"
-                    : a.status === "finalizado"
-                    ? "bg-dark-600 text-gray-300"
-                    : "bg-gray-700 text-gray-400"
-                }`}
-              >
-                {a.status === "confirmado" ? "Confirmado" : a.status === "finalizado" ? "Finalizado" : "Cancelado"}
-              </span>
-              <p className="text-white font-medium text-sm md:text-base truncate">{a.servicoNome}</p>
-              <p className="text-gray-400 text-xs md:text-sm truncate">Com {a.barbeiroNome}</p>
-              <p className="text-gray-500 text-[10px] md:text-xs mt-0.5 md:mt-1">{a.dataLabel} · {a.horario}</p>
-              <p className="text-brand-purple text-xs md:text-sm font-medium mt-0.5 md:mt-1">R$ {a.preco.toFixed(2).replace(".", ",")}</p>
-              <div className="mt-2 md:mt-3 flex flex-wrap gap-1.5 md:gap-2">
-                {a.status === "confirmado" && (
-                  <>
-                    <button type="button" onClick={() => handleFinalizar(a.id)} className="py-1.5 px-2.5 md:px-3 rounded-lg bg-green-600 text-white text-[10px] md:text-xs hover:bg-green-700 min-h-[36px] md:min-h-[32px]">Finalizar</button>
-                    <button type="button" onClick={() => handleCancelar(a.id)} className="py-1.5 px-2.5 md:px-3 rounded-lg border border-brand-red text-brand-red text-[10px] md:text-xs hover:bg-brand-red/10 min-h-[36px] md:min-h-[32px]">Cancelar</button>
-                  </>
-                )}
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+      {!itens.length ? (
+        <div className="border border-dashed border-border px-5 py-16 text-center"><CalendarDays className="mx-auto size-7 text-muted-foreground" /><h2 className="mt-3 font-medium">Nenhum agendamento neste período</h2><p className="mt-1 text-sm text-muted-foreground">Novas reservas aparecerão aqui automaticamente.</p></div>
+      ) : (
+        <>
+          <div className="space-y-6 md:hidden">
+            {Array.from(groups.entries()).map(([day, appointments]) => (
+              <section key={day}>
+                <h2 className="mb-2 text-xs font-semibold capitalize tracking-wide text-muted-foreground">{day}</h2>
+                <div className="divide-y divide-border border-y border-border">
+                  {appointments.map((item) => (
+                    <article key={item.id} className="py-4">
+                      <div className="flex items-start gap-3">
+                        <p className="w-12 shrink-0 font-mono text-sm font-semibold text-primary">{timeFormat.format(item.inicio)}</p>
+                        <div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><h3 className="truncate text-sm font-semibold">{item.clienteNome}</h3><StatusBadge status={item.status} /></div><p className="mt-1 text-sm text-muted-foreground">{item.servico.nome} com {item.barbeiro.name}</p><p className="mt-1 text-xs text-muted-foreground">{item.clienteTelefone}{item.clienteEmail ? ` · ${item.clienteEmail}` : ""}</p></div>
+                      </div>
+                      <form action={atualizarStatus} className="ml-[60px] mt-3 flex gap-2 overflow-x-auto">
+                        <input type="hidden" name="id" value={item.id} />
+                        {[{ value: "CONFIRMADO", label: "Confirmar" }, { value: "FINALIZADO", label: "Finalizar" }, { value: "CANCELADO", label: "Cancelar" }].map((status) => <Button key={status.value} name="status" value={status.value} type="submit" variant={status.value === "CANCELADO" ? "ghost" : "outline"} size="sm" disabled={item.status === status.value}>{status.label}</Button>)}
+                      </form>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
 
-      {lista.length === 0 && (
-        <p className="text-gray-400 text-center py-8 md:py-12 text-sm md:text-base">Nenhum agendamento encontrado.</p>
+          <div className="surface hidden overflow-hidden rounded-lg md:block">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3 font-medium">Data</th><th className="px-4 py-3 font-medium">Cliente</th><th className="px-4 py-3 font-medium">Atendimento</th><th className="px-4 py-3 font-medium">Profissional</th><th className="px-4 py-3 font-medium">Status</th><th className="w-12 px-4 py-3"><span className="sr-only">Ações</span></th></tr></thead>
+              <tbody className="divide-y divide-border">
+                {itens.map((item) => (
+                  <tr key={item.id} className="hover:bg-muted/30">
+                    <td className="whitespace-nowrap px-4 py-3.5"><p className="font-mono font-semibold text-primary">{timeFormat.format(item.inicio)}</p><p className="text-xs capitalize text-muted-foreground">{shortDate.format(item.inicio)}</p></td>
+                    <td className="px-4 py-3.5"><p className="font-medium">{item.clienteNome}</p><p className="text-xs text-muted-foreground">{item.clienteTelefone}</p></td>
+                    <td className="px-4 py-3.5">{item.servico.nome}<p className="text-xs text-muted-foreground">{item.servico.duracao} min</p></td>
+                    <td className="px-4 py-3.5">{item.barbeiro.name}</td>
+                    <td className="px-4 py-3.5"><StatusBadge status={item.status} /></td>
+                    <td className="px-4 py-3.5">
+                      <form action={atualizarStatus} className="group relative">
+                        <input type="hidden" name="id" value={item.id} />
+                        <Button type="button" variant="ghost" size="icon"><MoreHorizontal /></Button>
+                        <div className="invisible absolute right-0 top-10 z-10 w-36 rounded-md border border-border bg-popover p-1 opacity-0 shadow-xl group-focus-within:visible group-focus-within:opacity-100">
+                          {[{ value: "CONFIRMADO", label: "Confirmar" }, { value: "FINALIZADO", label: "Finalizar" }, { value: "CANCELADO", label: "Cancelar" }].map((status) => <button key={status.value} name="status" value={status.value} disabled={item.status === status.value} className="flex min-h-9 w-full items-center rounded-sm px-3 text-left text-sm hover:bg-muted disabled:opacity-40">{status.label}</button>)}
+                        </div>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
-  );
-}
-
-export default function AdminAgendamentosPage() {
-  return (
-    <Suspense fallback={<div className="text-gray-400 py-8">Carregando...</div>}>
-      <AdminAgendamentosContent />
-    </Suspense>
   );
 }

@@ -36,5 +36,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# prisma
-/prisma/migrations
+# Prisma migrations are versioned so production can apply the same schema.
