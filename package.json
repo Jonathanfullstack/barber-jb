@@ -6,7 +6,7 @@
     "dev": "./node_modules/.bin/next dev",
     "build": "./node_modules/.bin/prisma generate && ./node_modules/.bin/next build --webpack",
     "start": "./node_modules/.bin/next start",
-    "start:railway": "./node_modules/.bin/prisma migrate deploy || ./node_modules/.bin/prisma db push; ./node_modules/.bin/next start --hostname 0.0.0.0 --port ${PORT:-3000}",
+    "start:railway": "./node_modules/.bin/prisma migrate deploy || ./node_modules/.bin/prisma db push --accept-data-loss; ./node_modules/.bin/next start --hostname 0.0.0.0 --port ${PORT:-3000}",
     "lint": "./node_modules/.bin/eslint .",
     "db:generate": "./node_modules/.bin/prisma generate",
     "db:push": "./node_modules/.bin/prisma db push",

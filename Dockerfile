@@ -20,4 +20,4 @@ ENV HOSTNAME="0.0.0.0"
 
 # Railway injeta PORT e DATABASE_URL. migrate deploy em banco novo;
 # db push cobre o Postgres já existente deste projeto (schema sem histórico de migration).
-CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma db push; npx next start --hostname 0.0.0.0 --port ${PORT:-3000}"]
+CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma db push --accept-data-loss; npx next start --hostname 0.0.0.0 --port ${PORT:-3000}"]
